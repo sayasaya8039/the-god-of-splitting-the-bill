@@ -47,9 +47,16 @@
       </section>
     {/if}
   {:else}
-    <!-- 参加者リスト -->
+    <!-- 未割り当てアイテム（上に配置 - ドラッグ元） -->
+    {#if sessionState.session.items.filter(i => !i.assignedTo).length > 0}
+      <section class="sticky top-0 z-10 bg-gray-50 -mx-4 px-4 py-3 shadow-sm">
+        <ItemList />
+      </section>
+    {/if}
+
+    <!-- 参加者リスト（下に配置 - ドロップ先） -->
     <section>
-      <h2 class="font-bold text-gray-800 mb-3">参加者</h2>
+      <h2 class="font-bold text-gray-800 mb-3">👇 ここにドロップして割り当て</h2>
       <div class="space-y-4">
         {#each sessionState.session.participants as participant (participant.id)}
           <ParticipantCard {participant} />
@@ -57,13 +64,6 @@
         <AddParticipant />
       </div>
     </section>
-
-    <!-- 未割り当てアイテム -->
-    {#if sessionState.session.items.filter(i => !i.assignedTo).length > 0}
-      <section>
-        <ItemList />
-      </section>
-    {/if}
 
     <!-- 結果サマリー -->
     {#if sessionState.session.items.length > 0}
