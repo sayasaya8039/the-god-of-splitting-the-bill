@@ -1,31 +1,28 @@
 <script lang="ts">
-  import { dndzone } from "svelte-dnd-action";
   import { sessionState } from "$lib/stores.svelte";
-  import type { ReceiptItem } from "$lib/types";
 
-  interface DndItem {
-    id: string;
-    data: ReceiptItem;
-  }
-
-  let items = $derived(
-    sessionState.session.items
-      .filter((item) => !item.assignedTo)
-      .map((item) => ({ id: item.id, data: item }))
-  );
-
-  const flipDurationMs = 200;
-
-  function handleDndConsider(e: CustomEvent<{ items: DndItem[] }>) {
-    // 一時的な状態変更は無視
-  }
-
-  function handleDndFinalize(e: CustomEvent<{ items: DndItem[] }>) {
-    // ドロップ完了時の処理
-  }
+  // 全商品を表示（割り当て済み含む）
+  let allItems = $derived(sessionState.session.items);
+  let participants = $derived(sessionState.session.participants);
 
   function formatPrice(price: number): string {
     return price.toLocaleString("ja-JP");
+  }
+
+  function handleAssign(itemId: string, participantId: string | null) {
+    sessionState.assignItem(itemId, participantId === "" ? null : participantId);
+  }
+
+  function getParticipantEmoji(participantId: string | null): string {
+    if (!participantId) return "❓";
+    const p = participants.find(p => p.id === participantId);
+    return p?.emoji || "👤";
+  }
+
+  function getParticipantColor(participantId: string | null): string {
+    if (!participantId) return "#9CA3AF";
+    const p = participants.find(p => p.id === participantId);
+    return p?.color || "#9CA3AF";
   }
 </script>
 
@@ -33,58 +30,79 @@
   <div class="flex items-center justify-between">
     <h2 class="font-bold text-gray-800">商品リスト</h2>
     <span class="text-sm text-gray-500">
-      {items.length}件 / 合計 ¥{formatPrice(sessionState.totalAmount)}
+      {allItems.length}件 / 合計 ¥{formatPrice(sessionState.totalAmount)}
     </span>
   </div>
 
-  {#if items.length === 0}
+  {#if allItems.length === 0}
     <div class="text-center py-8 text-gray-400">
       <p class="text-3xl mb-2">📝</p>
       <p>レシートをアップロードすると</p>
       <p>商品が表示されます</p>
     </div>
   {:else}
-    <div
-      use:dndzone={{
-        items,
-        flipDurationMs,
-        dropTargetStyle: {},
-        type: "item",
-      }}
-      onconsider={handleDndConsider}
-      onfinalize={handleDndFinalize}
-      class="space-y-2"
-    >
-      {#each items as item (item.id)}
+    <div class="space-y-2">
+      {#each allItems as item (item.id)}
         <div
-          class="bg-white rounded-lg p-3 shadow-sm border border-gray-100
-                 flex items-center justify-between cursor-grab active:cursor-grabbing
-                 hover:shadow-md transition-shadow"
+          class="bg-white rounded-lg p-3 shadow-sm border-l-4 transition-all"
+          style="border-left-color: {getParticipantColor(item.assignedTo)}"
         >
-          <div class="flex-1 min-w-0">
-            <p class="font-medium text-gray-800 truncate">{item.data.name}</p>
-            {#if item.data.quantity > 1}
-              <p class="text-xs text-gray-500">×{item.data.quantity}</p>
-            {/if}
-          </div>
-          <div class="text-right ml-3">
-            <p class="font-bold text-blue-600">
-              ¥{formatPrice(item.data.price * item.data.quantity)}
-            </p>
-          </div>
-          <div class="ml-2 text-gray-300">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z"/>
-            </svg>
+          <div class="flex items-center gap-3">
+            <!-- 商品情報 -->
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-gray-800 truncate">{item.name}</p>
+              {#if item.quantity > 1}
+                <p class="text-xs text-gray-500">×{item.quantity}</p>
+              {/if}
+            </div>
+
+            <!-- 価格 -->
+            <div class="text-right">
+              <p class="font-bold text-blue-600">
+                ¥{formatPrice(item.price * item.quantity)}
+              </p>
+            </div>
+
+            <!-- 割り当てドロップダウン -->
+            <div class="relative">
+              <select
+                value={item.assignedTo || ""}
+                onchange={(e) => handleAssign(item.id, e.currentTarget.value)}
+                class="appearance-none bg-gray-100 rounded-lg pl-8 pr-6 py-2 text-sm
+                       border-2 border-transparent focus:border-blue-400 focus:outline-none
+                       cursor-pointer min-w-[100px]"
+                style="border-color: {item.assignedTo ? getParticipantColor(item.assignedTo) : transparent}"
+              >
+                <option value="">未割当</option>
+                {#each participants as p (p.id)}
+                  <option value={p.id}>{p.emoji} {p.name}</option>
+                {/each}
+              </select>
+              <!-- 絵文字表示 -->
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-lg pointer-events-none">
+                {getParticipantEmoji(item.assignedTo)}
+              </span>
+              <!-- 矢印 -->
+              <svg class="absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
       {/each}
     </div>
 
+    <!-- 割り当て状況サマリー -->
     {#if sessionState.unassignedAmount > 0}
       <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
         <p class="text-yellow-800">
-          💡 商品を下の参加者にドラッグして割り当ててください
+          ⚠️ 未割り当て: ¥{formatPrice(sessionState.unassignedAmount)}
+        </p>
+      </div>
+    {:else if allItems.length > 0}
+      <div class="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
+        <p class="text-green-800">
+          ✅ すべての商品が割り当て済みです
         </p>
       </div>
     {/if}

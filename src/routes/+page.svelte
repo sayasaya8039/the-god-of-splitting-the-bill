@@ -40,30 +40,48 @@
       <ReceiptUploader />
     </section>
 
-    <!-- 商品リスト -->
+    <!-- 商品リスト（読取タブでは閲覧のみ） -->
     {#if sessionState.session.items.length > 0}
       <section>
         <ItemList />
       </section>
     {/if}
   {:else}
-    <!-- 未割り当てアイテム（上に配置 - ドラッグ元） -->
-    {#if sessionState.session.items.filter(i => !i.assignedTo).length > 0}
-      <section class="sticky top-0 z-10 bg-gray-50 -mx-4 px-4 py-3 shadow-sm">
+    <!-- 参加者追加 -->
+    <section>
+      <h2 class="font-bold text-gray-800 mb-3">参加者</h2>
+      <div class="flex flex-wrap gap-2 mb-4">
+        {#each sessionState.session.participants as participant (participant.id)}
+          <div 
+            class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium text-white"
+            style="background-color: {participant.color}"
+          >
+            <span>{participant.emoji}</span>
+            <span>{participant.name}</span>
+          </div>
+        {/each}
+      </div>
+      <AddParticipant />
+    </section>
+
+    <!-- 商品リスト（割り当て可能） -->
+    {#if sessionState.session.items.length > 0}
+      <section>
         <ItemList />
       </section>
     {/if}
 
-    <!-- 参加者リスト（下に配置 - ドロップ先） -->
-    <section>
-      <h2 class="font-bold text-gray-800 mb-3">👇 ここにドロップして割り当て</h2>
-      <div class="space-y-4">
-        {#each sessionState.session.participants as participant (participant.id)}
-          <ParticipantCard {participant} />
-        {/each}
-        <AddParticipant />
-      </div>
-    </section>
+    <!-- 参加者別の割り当て一覧 -->
+    {#if sessionState.session.participants.length > 0 && sessionState.session.items.some(i => i.assignedTo)}
+      <section>
+        <h2 class="font-bold text-gray-800 mb-3">参加者別</h2>
+        <div class="space-y-4">
+          {#each sessionState.session.participants as participant (participant.id)}
+            <ParticipantCard {participant} />
+          {/each}
+        </div>
+      </section>
+    {/if}
 
     <!-- 結果サマリー -->
     {#if sessionState.session.items.length > 0}
