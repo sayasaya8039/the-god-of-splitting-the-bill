@@ -1,0 +1,17 @@
+name = "warikan-no-kamisama"
+main = "workers/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+APP_NAME = "割り勘の神様"
+APP_VERSION = "0.1.0"
+
+[build]
+command = "bun run build"
+
+[assets]
+directory = "./build"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "single-page-application"
